@@ -11,13 +11,14 @@
 #define MAX_LOUDNESS 348
 #define STROBE_PIN 13
 #define RESET_PIN 12
+#define BASE_BRIGHTNESS 150
 
 int modes[NUM_MODES] = {};
 CRGB ledsBass[NUM_LEDS];
 CRGB ledsMids[NUM_LEDS];
 CRGB ledsHighs[NUM_LEDS];
 int colors[NUM_LEDS];
-int msg_level[7];
+int* prev_level;
 int msgOutPin = A5;
 int msgStrobePin = STROBE_PIN;
 int msgResetPin = RESET_PIN;
@@ -34,8 +35,8 @@ void setup() {
   ///////////////////SETUP FAST LED///////////////////////////////
   FastLED.addLeds<WS2812, LED_PIN_BASS, GRB>(ledsBass, NUM_LEDS);
   FastLED.addLeds<WS2812, LED_PIN_MIDS, GRB>(ledsMids, NUM_LEDS);
-  FastLED.addLeds<WS2812, LED_PIN_HIGHS, GRB>(leds, NUM_LEDS);
-  LEDS.setBrightness(255);
+  FastLED.addLeds<WS2812, LED_PIN_HIGHS, GRB>(ledsHighs, NUM_LEDS);
+  LEDS.setBrightness(BASE_BRIGHTNESS);
   //////////////////////////////////////////////////////////////////
 
   ////////////////////SETUP MSGEQ7////////////////////////////////
@@ -83,21 +84,15 @@ void loop() {
         peakBounce(level);
         break;
     case 3:
-        allWhite(level);
+        allWhite();
         break;
     default:
         midBounce(level);
   }
-
+  prev_level = level; //set the previous level array
+  FastLED.show();
+  delay(25);//wait a lil
 }//loop
-
-/**
- * Helper function used to get the user selected mode
- */
-int checkMode(){
-  //TODO
-  return WHITE_MODE; //for testing
-}
 
 int clearStrip(){
   int i = 0;
@@ -106,7 +101,6 @@ int clearStrip(){
     ledsMids[i] = CRGB::Black;
     ledsHighs[i] = CRGB::Black;
   }
-  FastLED.show();
 }
 
 int buttonPressed(){
@@ -139,8 +133,6 @@ void midBounce(int* level){
     ledsBass[i] = CRGB::Black;
     ledsMids[i] = CRGB::Black;
   }
-  FastLED.show();
-  delay(25);//wait a lil
 }//midBounce
 
 void peakBounce(int* level){
@@ -150,13 +142,13 @@ void peakBounce(int* level){
    int i;
    for(i = 1; i < highest_led; i++){
       if(i < (NUM_LEDS / 3)){
-        leds[i] = CRGB::Green;
+        ledsBass[i] = CRGB::Green;
       }
       else if(i < (2*NUM_LEDS / 3)){
-        leds[i] = CRGB::Yellow;
+        ledsBass[i] = CRGB::Yellow;
       }
       else {
-        leds[i] = CRGB::Red;
+        ledsBass[i] = CRGB::Red;
       }
    }
    
@@ -164,12 +156,8 @@ void peakBounce(int* level){
    int j = highest_led;
    if(j == 0) j = 1;
    for( ; j < NUM_LEDS; j++){
-      leds[j] = CRGB::Black;
+      ledsBass[j] = CRGB::Black;
    }
-
-   FastLED.show();
-   delay(25); //wait a lil bit
-
 }//peakBounce
 
 void allWhite(){
@@ -178,7 +166,45 @@ void allWhite(){
     ledsMids[i] = CRGB::White;
     ledsHighs[i] = CRGB::White;
   }
-  FastLED.show()
-  delay(25);
+}
 
+void allInOne(int* level){
+  int tot = maxLevel(level); //get the maximum londness
+  int brightnessBoost = map(tot, 0, 1023, 0, 255 - BASE_BRIGHTNESS); //get the brightness boost
+  int midDist = map(tot, 0, 1023, 0, NUM_LEDS / 2); //get the distance from the middle
+  int bassLoudness = level[0] + level[1];
+  int redBoost = map(bassLoudness, 0, 2046, 0, 255); //how much to boost the red color
+  int midLoudness = level[2] + level[3];
+  int greenBoost = map(midLoudness, 0, 2046, 0, 255);
+  int trebBoost = level[4] + level[5] + level[6];
+  int blueBoost = map(trebBoost, 0, 3069, 0, 255);
+
+  int lowerBound = (NUM_LEDS/2) - midDist;
+  int upperBound = (NUM_LEDS/2) + midDist;
+  for(int i = lowerBound; i < upperBound; i++){
+    ledsBass[i].setRGB(redBoost, greenBoost, blueBoost);
+    ledsMids[i].setRGB(redBoost, greenBoost, blueBoost);
+    ledsHighs[i].setRGB(redBoost, greenBoost, blueBoost);
+  }
+  for(int i = 0; i < lowerBound; i++){
+    ledsBass[i] = CRGB::Black;
+    ledsMids[i] = CRGB::Black;
+    ledsHighs[i] = CRGB::Black;
+  }
+  for(int i = upperBound; i < NUM_LEDS; i++){
+    ledsBass[i] = CRGB::Black;
+    ledsMids[i] = CRGB::Black;
+    ledsHighs[i] = CRGB::Black;    
+  }
+  
+}
+
+int maxLevel(int* level){
+  int maximum = 0;
+  for(int i = 0; i < 7; i++){
+    if(level[i] > maxLevel){
+      maximum = level[i]; 
+    }
+  }
+  return maximum;
 }
