@@ -75,20 +75,21 @@ void loop() {
     delayMicroseconds  (40);                    // Delay necessary due to timing diagram  
   }
 
+  allInOne(level);
 //TODO get rid of magic numbers
-  switch(buttonState){
-    case 1: 
-        midBounce(level);
-        break;
-    case 2:
-        peakBounce(level);
-        break;
-    case 3:
-        allWhite();
-        break;
-    default:
-        midBounce(level);
-  }
+//  switch(buttonState){
+//    case 1: 
+//        midBounce(level);
+//        break;
+//    case 2:
+//        peakBounce(level);
+//        break;
+//    case 3:
+//        allWhite();
+//        break;
+//    default:
+//        midBounce(level);
+//  }
   prev_level = level; //set the previous level array
   FastLED.show();
   delay(25);//wait a lil
@@ -199,6 +200,10 @@ void allInOne(int* level){
   
 }
 
+/**
+ * Helper method to find the highest level
+ * reported in level[]
+ */
 int maxLevel(int* level){
   int maximum = 0;
   for(int i = 0; i < 7; i++){
